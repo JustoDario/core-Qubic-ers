@@ -13,51 +13,49 @@ public:
     struct Burn_input{};
     struct Burn_output{};
 
+    struct SetPrice_input {
+        uint64 price;
+    };
+    struct SetPrice_output {
+        sint32 returnCode;
+    };
+
+    struct SetSeller_input {
+        id sellerId;
+    };
+    struct SetSeller_output {
+        sint32 returnCode;
+    };
+
+    struct SetSender_input {
+        id senderId;
+    };
+    struct SetSender_output {
+        sint32 returnCode;
+    };
+
+    struct ProcessPayment_input {};
+    struct ProcessPayment_output {
+        sint32 returnCode;
+    };
+
     struct GetStats_input {};
-    struct GetStats_output
-    {
+    struct GetStats_output {
         uint64 numberOfEchoCalls;
         uint64 numberOfBurnCalls;
+        uint64 currentPrice;
+        id currentSeller;
+        id currentSender;
     };
 
-    // Estructuras para setPrice
-    struct SetPrice_input
-    {
-        uint64 amountInEuros;
-        uint64 sellerIndex;
+protected:
+    struct QPOSState {
+        uint64 numberOfEchoCalls;
+        uint64 numberOfBurnCalls;
+        uint64 currentPrice;
+        id currentSeller;
+        id currentSender;
     };
-    struct SetPrice_output
-    {
-        sint32 returnCode;
-    };
-
-    // Estructuras para processPayment
-    struct ProcessPayment_input
-    {
-        uint64 buyerIndex;
-        uint64 sellerIndex;
-    };
-    struct ProcessPayment_output
-    {
-        sint32 returnCode;
-    };
-
-    // Estructuras para convertToQubic
-    struct ConvertToQubic_input
-    {
-        uint64 amountInEuros;
-    };
-    struct ConvertToQubic_output
-    {
-        uint64 qubicAmount;
-        sint32 returnCode;
-    };
-
-private:
-    uint64 numberOfEchoCalls;
-    uint64 numberOfBurnCalls;
-    Array<uint64, 1024> sellerBalances;
-    uint64 exchangeRate;  // Tasa de cambio fija por ahora (1000 = 1 EUR = 1000 QUBIC)
 
     /**
     Send back the invocation amount
@@ -81,81 +79,76 @@ private:
         }
     _
 
-    /**
-    * Set price in euros for a seller
-    */
     PUBLIC_PROCEDURE(SetPrice)
-        if (input.amountInEuros <= 0 || input.sellerIndex >= 1024)
+        if (qpi.invocationReward() > 0)
         {
-            output.returnCode = -1;
-            return;
+            qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        state.sellerBalances.set(input.sellerIndex, input.amountInEuros);
-        output.returnCode = 0;
+        state.currentPrice = input.price;
+        output.returnCode = 1;
     _
 
-    /**
-    * Convert euros to QUBIC
-    */
-    PUBLIC_FUNCTION(ConvertToQubic)
-        if (input.amountInEuros <= 0 || state.exchangeRate <= 0)
+    PUBLIC_PROCEDURE(SetSeller)
+        if (qpi.invocationReward() > 0)
         {
-            output.returnCode = -1;
-            return;
+            qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        output.qubicAmount = input.amountInEuros * state.exchangeRate;
-        output.returnCode = 0;
+        state.currentSeller = input.sellerId;
+        output.returnCode = 1;
     _
 
-    /**
-    * Process payment from buyer to seller
-    */
+    PUBLIC_PROCEDURE(SetSender)
+        if (qpi.invocationReward() > 0)
+        {
+            qpi.transfer(qpi.invocator(), qpi.invocationReward());
+        }
+        state.currentSender = input.senderId;
+        output.returnCode = 1;
+    _
+
     PUBLIC_PROCEDURE(ProcessPayment)
-        if (input.sellerIndex >= 1024 || input.buyerIndex >= 1024)
+        if (qpi.invocationReward() < state.currentPrice)
         {
-            output.returnCode = -1;
+            output.returnCode = 0;
+            if (qpi.invocationReward() > 0)
+            {
+                qpi.transfer(qpi.invocator(), qpi.invocationReward());
+            }
             return;
         }
 
-        uint64 euroAmount = state.sellerBalances.get(input.sellerIndex);
-        if (euroAmount <= 0)
+        if (qpi.invocationReward() > state.currentPrice)
         {
-            output.returnCode = -2;
-            return;
+            qpi.transfer(qpi.invocator(), qpi.invocationReward() - state.currentPrice);
         }
 
-        uint64 qubicAmount = euroAmount * state.exchangeRate;
-        if (qpi.invocationReward() < qubicAmount)
-        {
-            output.returnCode = -3;
-            return;
-        }
-
-        // Transfer QUBIC to seller
-        qpi.transfer(input.sellerIndex, qubicAmount);
-        
-        // Reset seller balance
-        state.sellerBalances.set(input.sellerIndex, 0);
-        output.returnCode = 0;
+        qpi.transfer(state.currentSeller, state.currentPrice);
+        output.returnCode = 1;
     _
 
     PUBLIC_FUNCTION(GetStats)
         output.numberOfBurnCalls = state.numberOfBurnCalls;
         output.numberOfEchoCalls = state.numberOfEchoCalls;
+        output.currentPrice = state.currentPrice;
+        output.currentSeller = state.currentSeller;
+        output.currentSender = state.currentSender;
     _
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
         REGISTER_USER_PROCEDURE(Echo, 1);
         REGISTER_USER_PROCEDURE(Burn, 2);
         REGISTER_USER_PROCEDURE(SetPrice, 3);
-        REGISTER_USER_PROCEDURE(ProcessPayment, 4);
+        REGISTER_USER_PROCEDURE(SetSeller, 4);
+        REGISTER_USER_PROCEDURE(SetSender, 5);
+        REGISTER_USER_PROCEDURE(ProcessPayment, 6);
         REGISTER_USER_FUNCTION(GetStats, 1);
-        REGISTER_USER_FUNCTION(ConvertToQubic, 2);
     _
 
     INITIALIZE
         state.numberOfEchoCalls = 0;
         state.numberOfBurnCalls = 0;
-        state.exchangeRate = 1000; // 1 EUR = 1000 QUBIC
+        state.currentPrice = 0;
+        state.currentSeller = NULL_ID;
+        state.currentSender = NULL_ID;
     _
 };
