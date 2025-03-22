@@ -48,20 +48,18 @@ public:
         id currentSender;
     };
 
-protected:
-    struct QPOSState {
-        uint64 numberOfEchoCalls;
-        uint64 numberOfBurnCalls;
-        uint64 currentPrice;
-        id currentSeller;
-        id currentSender;
-    };
+private:
+    uint64 numberOfEchoCalls;
+    uint64 numberOfBurnCalls;
+    uint64 currentPrice;
+    id currentSeller;
+    id currentSender;
 
     /**
     Send back the invocation amount
     */
     PUBLIC_PROCEDURE(Echo)
-        state.numberOfEchoCalls++;
+        numberOfEchoCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -72,7 +70,7 @@ protected:
     * Burn all invocation amount
     */
     PUBLIC_PROCEDURE(Burn)
-        state.numberOfBurnCalls++;
+        numberOfBurnCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.burn(qpi.invocationReward());
@@ -84,7 +82,7 @@ protected:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        state.currentPrice = input.price;
+        currentPrice = input.price;
         output.returnCode = 1;
     _
 
@@ -93,7 +91,7 @@ protected:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        state.currentSeller = input.sellerId;
+        currentSeller = input.sellerId;
         output.returnCode = 1;
     _
 
@@ -102,12 +100,12 @@ protected:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        state.currentSender = input.senderId;
+        currentSender = input.senderId;
         output.returnCode = 1;
     _
 
     PUBLIC_PROCEDURE(ProcessPayment)
-        if (qpi.invocationReward() < state.currentPrice)
+        if (qpi.invocationReward() < currentPrice)
         {
             output.returnCode = 0;
             if (qpi.invocationReward() > 0)
@@ -117,21 +115,21 @@ protected:
             return;
         }
 
-        if (qpi.invocationReward() > state.currentPrice)
+        if (qpi.invocationReward() > currentPrice)
         {
-            qpi.transfer(qpi.invocator(), qpi.invocationReward() - state.currentPrice);
+            qpi.transfer(qpi.invocator(), qpi.invocationReward() - currentPrice);
         }
 
-        qpi.transfer(state.currentSeller, state.currentPrice);
+        qpi.transfer(currentSeller, currentPrice);
         output.returnCode = 1;
     _
 
     PUBLIC_FUNCTION(GetStats)
-        output.numberOfBurnCalls = state.numberOfBurnCalls;
-        output.numberOfEchoCalls = state.numberOfEchoCalls;
-        output.currentPrice = state.currentPrice;
-        output.currentSeller = state.currentSeller;
-        output.currentSender = state.currentSender;
+        output.numberOfBurnCalls = numberOfBurnCalls;
+        output.numberOfEchoCalls = numberOfEchoCalls;
+        output.currentPrice = currentPrice;
+        output.currentSeller = currentSeller;
+        output.currentSender = currentSender;
     _
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
@@ -145,10 +143,10 @@ protected:
     _
 
     INITIALIZE
-        state.numberOfEchoCalls = 0;
-        state.numberOfBurnCalls = 0;
-        state.currentPrice = 0;
-        state.currentSeller = NULL_ID;
-        state.currentSender = NULL_ID;
+        numberOfEchoCalls = 0;
+        numberOfBurnCalls = 0;
+        currentPrice = 0;
+        currentSeller = NULL_ID;
+        currentSender = NULL_ID;
     _
 };
