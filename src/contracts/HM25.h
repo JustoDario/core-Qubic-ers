@@ -59,7 +59,7 @@ private:
     Send back the invocation amount
     */
     PUBLIC_PROCEDURE(Echo)
-        numberOfEchoCalls++;
+        state.numberOfEchoCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
@@ -70,7 +70,7 @@ private:
     * Burn all invocation amount
     */
     PUBLIC_PROCEDURE(Burn)
-        numberOfBurnCalls++;
+        state.numberOfBurnCalls++;
         if (qpi.invocationReward() > 0)
         {
             qpi.burn(qpi.invocationReward());
@@ -82,7 +82,7 @@ private:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        currentPrice = input.price;
+        state.currentPrice = input.price;
         output.returnCode = 1;
     _
 
@@ -91,7 +91,7 @@ private:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        currentSeller = input.sellerId;
+        state.currentSeller = input.sellerId;
         output.returnCode = 1;
     _
 
@@ -100,12 +100,12 @@ private:
         {
             qpi.transfer(qpi.invocator(), qpi.invocationReward());
         }
-        currentSender = input.senderId;
+        state.currentSender = input.senderId;
         output.returnCode = 1;
     _
 
     PUBLIC_PROCEDURE(ProcessPayment)
-        if (qpi.invocationReward() < currentPrice)
+        if (qpi.invocationReward() < state.currentPrice)
         {
             output.returnCode = 0;
             if (qpi.invocationReward() > 0)
@@ -115,21 +115,21 @@ private:
             return;
         }
 
-        if (qpi.invocationReward() > currentPrice)
+        if (qpi.invocationReward() > state.currentPrice)
         {
-            qpi.transfer(qpi.invocator(), qpi.invocationReward() - currentPrice);
+            qpi.transfer(qpi.invocator(), qpi.invocationReward() - state.currentPrice);
         }
 
-        qpi.transfer(currentSeller, currentPrice);
+        qpi.transfer(state.currentSeller, state.currentPrice);
         output.returnCode = 1;
     _
 
     PUBLIC_FUNCTION(GetStats)
-        output.numberOfBurnCalls = numberOfBurnCalls;
-        output.numberOfEchoCalls = numberOfEchoCalls;
-        output.currentPrice = currentPrice;
-        output.currentSeller = currentSeller;
-        output.currentSender = currentSender;
+        output.numberOfBurnCalls = state.numberOfBurnCalls;
+        output.numberOfEchoCalls = state.numberOfEchoCalls;
+        output.currentPrice = state.currentPrice;
+        output.currentSeller = state.currentSeller;
+        output.currentSender = state.currentSender;
     _
 
     REGISTER_USER_FUNCTIONS_AND_PROCEDURES
@@ -143,10 +143,10 @@ private:
     _
 
     INITIALIZE
-        numberOfEchoCalls = 0;
-        numberOfBurnCalls = 0;
-        currentPrice = 0;
-        currentSeller = NULL_ID;
-        currentSender = NULL_ID;
+        state.numberOfEchoCalls = 0;
+        state.numberOfBurnCalls = 0;
+        state.currentPrice = 0;
+        state.currentSeller = NULL_ID;
+        state.currentSender = NULL_ID;
     _
 };
